@@ -5682,6 +5682,10 @@ epilogProcessor(XML_Parser parser, const char *s, const char *end,
         return XML_ERROR_NO_MEMORY;
       break;
     case XML_TOK_INVALID:
+      if (*s == 0 && end - s <= 2) {
+        *nextPtr = end;
+        return XML_ERROR_NONE;
+      }
       parser->m_eventPtr = next;
       return XML_ERROR_INVALID_TOKEN;
     case XML_TOK_PARTIAL:
