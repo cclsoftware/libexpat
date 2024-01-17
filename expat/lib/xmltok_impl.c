@@ -645,6 +645,10 @@ PREFIX(scanAtts)(const ENCODING *enc, const char *ptr, const char *end,
         t = BYTE_TYPE(enc, ptr);
         if (t == open)
           break;
+
+      if (t == BT_NONXML)
+        ptr += MINBPC(enc);
+      else
         switch (t) {
           INVALID_CASES(ptr, nextTokPtr)
         case BT_AMP: {
