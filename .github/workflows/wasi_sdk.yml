@@ -5,9 +5,8 @@
 #                      \___/_/\_\ .__/ \__,_|\__|
 #                               |_| XML parser
 #
-# Copyright (c) 2021-2025 Sebastian Pipping <sebastian@pipping.org>
-# Copyright (c) 2023      Joyce Brum <joycebrum@google.com>
-# Copyright (c) 2024      Dag-Erling Smørgrav <des@des.dev>
+# Copyright (c) 2025-2026 Sebastian Pipping <sebastian@pipping.org>
+# Copyright (c) 2025      Atrem Borovik <polzovatellllk@gmail.com>
 # Licensed under the MIT license:
 #
 # Permission is  hereby granted,  free of charge,  to any  person obtaining
@@ -29,7 +28,7 @@
 # OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
 # USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-name: Run Cppcheck (from macOS Homebrew)
+name: Build with WASI SDK
 
 on:
   pull_request:
@@ -42,16 +41,29 @@ permissions:
   contents: read
 
 jobs:
-  checks:
-    name: Run Cppcheck
-    runs-on: macos-14
+  wasi_sdk:
+    name: Build with WASI SDK
+    runs-on: ubuntu-22.04
     steps:
     - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
-    - name: Install runtime dependencies
-      run: |
+
+    - name: Install build dependencies
+      run: |-
         set -x
-        brew update
-        exec brew install cppcheck
-    - name: Run Cppcheck
+        wget https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-30/wasi-sdk-30.0-x86_64-linux.deb
+        sudo apt-get install --yes ./wasi-sdk-30.0-x86_64-linux.deb
+
+    - name: Build using WASI SDK
       run: |
-        exec .github/workflows/scripts/mass-cppcheck.sh
+        cmake_args=(
+          -DCMAKE_TOOLCHAIN_FILE=/opt/wasi-sdk/share/cmake/wasi-sdk.cmake
+          -DCMAKE_C_FLAGS='-O1 -pipe -Wall -Wextra -pedantic -Wno-overlength-strings -DXML_POOR_ENTROPY'
+          -DCMAKE_CXX_FLAGS='-O2 -pipe -Wall -Wextra -pedantic -Wno-overlength-strings'
+          -DEXPAT_BUILD_DOCS=OFF
+          -DEXPAT_BUILD_TESTS=OFF
+          -DEXPAT_SHARED_LIBS=OFF
+          -DEXPAT_WARNINGS_AS_ERRORS=ON
+        )
+        set -x
+        cmake "${cmake_args[@]}" -S expat/ -B build/
+        make -C build -j$(nproc) VERBOSE=1 all
