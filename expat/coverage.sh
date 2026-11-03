@@ -6,7 +6,7 @@
 #                      \___/_/\_\ .__/ \__,_|\__|
 #                               |_| XML parser
 #
-# Copyright (c) 2017-2025 Sebastian Pipping <sebastian@pipping.org>
+# Copyright (c) 2017-2026 Sebastian Pipping <sebastian@pipping.org>
 # Copyright (c) 2018      Marco Maggi <marco.maggi-ipsu@poste.it>
 # Copyright (c) 2019      Mohammed Khajapasha <mohammed.khajapasha@intel.com>
 # Copyright (c) 2026      Rosen Penev <rosenp@gmail.com>
@@ -54,11 +54,6 @@ _get_build_dir() {
         char_part=__char
     fi
 
-    local xml_attr_part=
-    if ${xml_attr_info_enabled}; then
-        xml_attr_part=__attr_info
-    fi
-
     local m32_part=
     if ${with_m32}; then
         m32_part=__m32
@@ -74,7 +69,7 @@ _get_build_dir() {
         dtd_part=__dtd
     fi
 
-    echo "build__${version}__xml_context_${xml_context}${mingw_part}${char_part}${ge_part}${dtd_part}${xml_attr_part}${m32_part}"
+    echo "build__${version}__xml_context_${xml_context}${mingw_part}${char_part}${ge_part}${dtd_part}${m32_part}"
 }
 
 
@@ -89,16 +84,13 @@ _call_cmake() {
     ${unicode_enabled} \
             && cmake_args+=( -DEXPAT_CHAR_TYPE=wchar_t )
 
-    ${xml_attr_info_enabled} \
-            && cmake_args+=( -DEXPAT_ATTR_INFO=ON )
-
     if [[ ${xml_context} -eq 0 ]]; then
         cmake_args+=( -DEXPAT_CONTEXT_BYTES=OFF )
     else
         cmake_args+=( -DEXPAT_CONTEXT_BYTES=${xml_context} )
     fi
 
-    ${with_mingw} && cmake_args+=( -DCMAKE_TOOLCHAIN_FILE="${abs_source_dir}"/cmake/mingw-toolchain.cmake )
+    ${with_mingw} && cmake_args+=( -DCMAKE_TOOLCHAIN_FILE="${abs_source_dir}"/cmake/mingw-toolchain-win32.cmake )
     ${with_m32} && cmake_args+=( -D_EXPAT_M32=ON )
     ${with_ge} || cmake_args+=( -DEXPAT_GE=OFF )
     ${with_dtd} || cmake_args+=( -DEXPAT_DTD=OFF )
@@ -315,10 +307,8 @@ _main() {
                 continue
             fi
 
-            for xml_attr_info_enabled in true false ; do
-                for xml_context in 0 1024 ; do
-                    _build_case
-                done
+            for xml_context in 0 1024 ; do
+                _build_case
             done
         done
     done

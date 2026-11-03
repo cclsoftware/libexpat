@@ -42,6 +42,7 @@ permissions:
 jobs:
   windows_binaries:
     name: Build ${{ matrix.expat_platform }} binaries
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
@@ -65,7 +66,9 @@ jobs:
         shell: bash
     runs-on: "${{ matrix.runs-on }}"
     steps:
-    - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      with:
+        persist-credentials: false
 
     - uses: microsoft/setup-msbuild@30375c66a4eea26614e0d39710365f22f8b0af57  # v3.0.0
 
@@ -151,7 +154,7 @@ jobs:
         ( cd app && 7z a -tzip -mx=9 ../"${zip_name}" . )
 
     - name: Offer binaries for download
-      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
       with:
         name: expat_${{ matrix.expat_platform }}_${{ github.sha }}
         path: expat/${{ matrix.expat_platform }}/expat-win*bin-*.*.*.*

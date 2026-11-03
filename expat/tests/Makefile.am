@@ -10,6 +10,7 @@
 # Copyright (c) 2017-2022 Rhodri James <rhodri@wildebeest.org.uk>
 # Copyright (c) 2020      Jeffrey Walton <noloader@gmail.com>
 # Copyright (c) 2024      Dag-Erling Smørgrav <des@des.dev>
+# Copyright (c) 2026      Funda Wang <fundawang@yeah.net>
 # Licensed under the MIT license:
 #
 # Permission is  hereby granted,  free of charge,  to any  person obtaining
@@ -49,17 +50,21 @@ runtests_SOURCES = \
     common.c \
     dummy.c \
     handlers.c \
+    hash_tests.c \
+    entities_tests.c \
     memcheck.c \
     minicheck.c \
     misc_tests.c \
     ns_tests.c \
     nsalloc_tests.c \
+    props_tests.c \
     runtests.c \
-    structdata.c
+    structdata.c \
+    xcs_tests.c
 
-runtests_LDADD = ../lib/libtestpat.la
+runtests_LDADD = ../lib/libtestpat.la @LIBM@
 
-runtests_LDFLAGS = @AM_LDFLAGS@ @LIBM@
+runtests_LDFLAGS = @AM_LDFLAGS@
 
 EXTRA_DIST = \
     acc_tests.h \
@@ -69,13 +74,17 @@ EXTRA_DIST = \
     common.h \
     dummy.h \
     handlers.h \
+    hash_tests.h \
+    entities_tests.h \
+    memcheck.h \
+    minicheck.h \
     misc_tests.h \
     ns_tests.h \
     nsalloc_tests.h \
-    structdata.h \
-    minicheck.h \
-    memcheck.h \
+    props_tests.h \
     README.md \
+    structdata.h \
     udiffer.py \
+    xcs_tests.h \
     xmltest.log.expected \
     xmltest.sh

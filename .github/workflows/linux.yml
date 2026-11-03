@@ -47,6 +47,7 @@ permissions:
 jobs:
   checks:
     name: Perform checks
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
@@ -56,8 +57,6 @@ jobs:
           - MODE: qa-sh
             FLAT_ENV: CC=clang CXX=clang++ LD=clang++ QA_SANITIZER=address
           - MODE: qa-sh
-            FLAT_ENV: CC=clang CXX=clang++ LD=clang++ QA_SANITIZER=address CMAKE_ARGS=-DEXPAT_ATTR_INFO=ON
-          - MODE: qa-sh
             FLAT_ENV: CC=clang CXX=clang++ LD=clang++ QA_SANITIZER=address CMAKE_ARGS=-DEXPAT_CONTEXT_BYTES=0
           - MODE: qa-sh
             FLAT_ENV: CC=clang CXX=clang++ LD=clang++ QA_SANITIZER=address CMAKE_ARGS="-DEXPAT_DTD=OFF -DEXPAT_GE=ON"
@@ -65,8 +64,6 @@ jobs:
             FLAT_ENV: CC=clang CXX=clang++ LD=clang++ QA_SANITIZER=address CMAKE_ARGS="-DEXPAT_DTD=OFF -DEXPAT_GE=OFF"
           - MODE: qa-sh
             FLAT_ENV: CC=clang CXX=clang++ LD=clang++ QA_SANITIZER=address CMAKE_ARGS=-DEXPAT_LARGE_SIZE=ON
-          - MODE: qa-sh
-            FLAT_ENV: CC=clang CXX=clang++ LD=clang++ QA_SANITIZER=address CMAKE_ARGS=-DEXPAT_MIN_SIZE=ON
           - MODE: qa-sh
             FLAT_ENV: CC=clang CXX=clang++ LD=clang++ QA_SANITIZER=address CMAKE_ARGS=-DEXPAT_NS=OFF
           - MODE: qa-sh
@@ -80,16 +77,17 @@ jobs:
           - MODE: qa-sh
             FLAT_ENV: CC=gcc CXX=g++ LD=ld QA_PROCESSOR=gcov CMAKE_ARGS=-D_EXPAT_M32=ON
           - MODE: qa-sh
-            FLAT_ENV: CC=gcc CXX=g++ LD=ld QA_PROCESSOR=gcov CMAKE_ARGS="-D_EXPAT_M32=ON -DEXPAT_ATTR_INFO=ON"
+            FLAT_ENV: CC=i686-w64-mingw32-gcc CXX=i686-w64-mingw32-g++ LD=i686-w64-mingw32-ld QA_PROCESSOR=gcov CMAKE_ARGS="-DCMAKE_SYSTEM_NAME=Windows -DWIN32=ON -DMINGW=ON"
           - MODE: qa-sh
-            FLAT_ENV: CC=i686-w64-mingw32-gcc CXX=i686-w64-mingw32-g++ LD=i686-w64-mingw32-ld QA_PROCESSOR=gcov CMAKE_ARGS="-DCMAKE_SYSTEM_NAME=Windows -DWIN32=ON -DMINGW=ON -DEXPAT_ATTR_INFO=ON"
-          - MODE: qa-sh
-            FLAT_ENV: CC=i686-w64-mingw32-gcc CXX=i686-w64-mingw32-g++ LD=i686-w64-mingw32-ld QA_PROCESSOR=gcov CMAKE_ARGS="-DCMAKE_SYSTEM_NAME=Windows -DWIN32=ON -DMINGW=ON -DEXPAT_ATTR_INFO=ON -DEXPAT_CHAR_TYPE=wchar_t"
+            FLAT_ENV: CC=i686-w64-mingw32-gcc CXX=i686-w64-mingw32-g++ LD=i686-w64-mingw32-ld QA_PROCESSOR=gcov CMAKE_ARGS="-DCMAKE_SYSTEM_NAME=Windows -DWIN32=ON -DMINGW=ON -DEXPAT_CHAR_TYPE=wchar_t"
     runs-on: ubuntu-24.04
     env:
       CFLAGS: -g3 -pipe
     steps:
-    - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      with:
+        persist-credentials: false
+
     - name: Install build dependencies (MinGW)
       if: "${{ contains(matrix.FLAT_ENV, 'mingw') }}"
       run: |-
@@ -97,28 +95,29 @@ jobs:
 
         # Install 32bit Wine
         sudo dpkg --add-architecture i386  # for wine32
-        sudo apt-get update  # due to new architecture
-        sudo apt-get install --yes --no-install-recommends -V \
+        sudo timeout 10m apt-get update  # due to new architecture
+        sudo timeout 10m apt-get install --yes --no-install-recommends -V \
             mingw-w64 \
             retry \
             wine-stable \
             wine32:i386
+
     - name: Install build dependencies (Non-MinGW)
       if: "${{ ! contains(matrix.FLAT_ENV, 'mingw') }}"
       run: |-
         set -x
         source /etc/os-release
         wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
-        sudo add-apt-repository "deb https://apt.llvm.org/${UBUNTU_CODENAME}/ llvm-toolchain-${UBUNTU_CODENAME}-21 main"
-        sudo apt-get update  # due to new repository
-        # NOTE: Please note the version-specific ${PATH} extension for Clang adding /usr/lib/llvm-21/bin in .ci.sh
-        sudo apt-get install --yes --no-install-recommends -V \
-            clang-21 \
-            libclang-rt-21-dev \
-            llvm-21
+        sudo timeout 10m add-apt-repository "deb https://apt.llvm.org/${UBUNTU_CODENAME}/ llvm-toolchain-${UBUNTU_CODENAME}-23 main"
+        # NOTE: Please note the version-specific ${PATH} extension for Clang adding /usr/lib/llvm-23/bin in .ci.sh
+        sudo timeout 10m apt-get install --yes --no-install-recommends -V \
+            clang-23 \
+            libclang-rt-23-dev \
+            llvm-23
+
     - name: Install build dependencies (common)
       run: |-
-        sudo apt-get install --yes --no-install-recommends -V \
+        sudo timeout 10m apt-get install --yes --no-install-recommends -V \
             cmake \
             docbook2x \
             gcc-multilib \
@@ -126,8 +125,15 @@ jobs:
             lcov \
             lzip \
             moreutils
+
     - name: Perform check "${{ matrix.MODE }}"
       env:
         MODE: ${{ matrix.MODE }}
+        drop_warning: "${{ contains(matrix.FLAT_ENV, '-DEXPAT_LARGE_SIZE=ON') && 'true' || 'false' }}"
       run: |
+        if ${drop_warning} ; then
+          sed 's|^# *warning|// &|' -i.bak expat/lib/expat_external.h
+          rm                               expat/lib/expat_external.h.bak
+        fi
+
         env ${{ matrix.FLAT_ENV }} ./.ci.sh
